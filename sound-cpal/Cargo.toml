@@ -1,0 +1,11 @@
+[package]
+name = "sound-cpal"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chip8-system = { path = "../chip8-system" }
+cpal = "0.13.3"
+crossbeam-channel = "0.5.1"
