@@ -8,8 +8,8 @@ use bitflags::bitflags;
 use crossbeam_channel::{Receiver, Sender};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use rand::prelude::ThreadRng;
-use rand::{thread_rng, Rng};
+use rand::prelude::SmallRng;
+use rand::{Rng, SeedableRng};
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
@@ -144,7 +144,7 @@ impl System {
     pub fn run(&mut self) -> Result<(), SystemError> {
         let tick = Duration::from_secs_f64(1.0 / 500.0); // 500 Hz
         let timer = crossbeam_channel::tick(tick);
-        let mut rng = thread_rng();
+        let mut rng = SmallRng::from_entropy();
 
         while timer.recv().is_ok() {
             self.execute_next_inst(&mut rng)?;
@@ -152,7 +152,7 @@ impl System {
         Ok(())
     }
 
-    fn execute_next_inst(&mut self, rng: &mut ThreadRng) -> Result<(), SystemError> {
+    fn execute_next_inst(&mut self, rng: &mut impl Rng) -> Result<(), SystemError> {
         // health check: PC must be even, otherwise we exit
         if self.cpu.pc % 2 != 0 {
             return Err(SystemError::OddPcAddress);
