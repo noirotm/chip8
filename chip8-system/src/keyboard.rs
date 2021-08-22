@@ -59,7 +59,7 @@ impl KeyboardMessage {
 pub(crate) struct KeyboardController {
     key_states: Shared<[KeyState; 16]>,
     wait_for_key: Arc<Mutex<bool>>,
-    wakey: Arc<(Mutex<Option<Key>>, Condvar)>,
+    wake_cond: Arc<(Mutex<Option<Key>>, Condvar)>,
     sender: Sender<KeyboardMessage>,
 }
 
@@ -74,13 +74,13 @@ impl KeyboardController {
         let (s, r) = crossbeam_channel::bounded(128);
 
         let key_states = Arc::new(RwLock::new([KeyState::Up; 16]));
-        let key_states_clone = key_states.clone();
+        let key_states_clone = Arc::clone(&key_states);
 
         let wait_for_key = Arc::new(Mutex::new(false));
-        let wait_for_key_clone = wait_for_key.clone();
+        let wait_for_key_clone = Arc::clone(&wait_for_key);
 
-        let wakey = Arc::new((Mutex::new(None), Condvar::new()));
-        let wakey_clone = wakey.clone();
+        let wake_cond = Arc::new((Mutex::new(None), Condvar::new()));
+        let wake_cond_clone = Arc::clone(&wake_cond);
 
         thread::spawn(move || {
             while let Ok(KeyboardMessage { state, key }) = r.recv() {
@@ -94,12 +94,11 @@ impl KeyboardController {
                         let mut waiting = wait_for_key_clone.lock();
                         if *waiting {
                             // notify our condition variable
-                            let &(ref lock, ref cv) = &*wakey_clone;
-                            let mut pressed_key = lock.lock();
-                            *pressed_key = Some(key);
+                            let &(ref key_lock, ref cv) = &*wake_cond_clone;
+                            *key_lock.lock() = Some(key);
                             cv.notify_one();
 
-                            // deregister the key
+                            // stop waiting
                             *waiting = false;
                         }
                     }
@@ -110,29 +109,26 @@ impl KeyboardController {
         Self {
             key_states,
             wait_for_key,
-            wakey,
+            wake_cond,
             sender: s,
         }
     }
 
     pub fn is_key_down(&self, key: Key) -> bool {
-        if let Ok(key_states) = self.key_states.read() {
-            let idx = key as usize;
-            key_states[idx] == KeyState::Down
-        } else {
-            false
-        }
+        self.key_states
+            .read()
+            .map(|ks| ks[key as usize] == KeyState::Down)
+            .unwrap_or(false)
     }
 
     pub fn wait_for_key_press(&self) -> Key {
-        // register wait
         {
-            let mut k = self.wait_for_key.lock();
-            *k = true;
+            // register wait
+            *self.wait_for_key.lock() = true;
         }
 
         // wait!
-        let &(ref lock, ref cv) = &*self.wakey;
+        let &(ref lock, ref cv) = &*self.wake_cond;
         let mut key_pressed = lock.lock();
         if key_pressed.is_none() {
             cv.wait(&mut key_pressed);

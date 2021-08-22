@@ -7,6 +7,7 @@ use druid::*;
 use std::time::Duration;
 
 const SCALING_FACTOR: f64 = 8.0;
+const REFRESH_RATE: u64 = 100;
 
 #[derive(Clone, Data, Lens)]
 struct AppState {}
@@ -72,12 +73,14 @@ impl Widget<AppState> for TerminalWidget {
             Event::WindowConnected => {
                 ctx.request_focus();
                 ctx.request_paint();
-                self.timer_id = ctx.request_timer(Duration::from_millis(100));
+                self.timer_id = ctx.request_timer(Duration::from_millis(REFRESH_RATE));
             }
             Event::KeyDown(k) => {
                 println!("Key Down: {:?}", k);
-                if let Some(k) = translate_key(&k.key) {
-                    let _ = self.key_sender.try_send(KeyboardMessage::down(k));
+                if !k.repeat {
+                    if let Some(k) = translate_key(&k.key) {
+                        let _ = self.key_sender.try_send(KeyboardMessage::down(k));
+                    }
                 }
             }
             Event::KeyUp(k) => {
@@ -89,7 +92,7 @@ impl Widget<AppState> for TerminalWidget {
             Event::Timer(id) => {
                 if *id == self.timer_id {
                     ctx.request_paint();
-                    self.timer_id = ctx.request_timer(Duration::from_millis(100));
+                    self.timer_id = ctx.request_timer(Duration::from_millis(REFRESH_RATE));
                 }
             }
             _ => {}
