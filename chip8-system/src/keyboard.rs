@@ -133,8 +133,12 @@ impl KeyboardController {
         if key_pressed.is_none() {
             cv.wait(&mut key_pressed);
         }
+        let k = key_pressed.expect("key cannot be empty");
 
-        key_pressed.expect("key cannot be empty")
+        // reset key for the next wait
+        *key_pressed = None;
+
+        k
     }
 }
 
