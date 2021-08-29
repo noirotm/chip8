@@ -76,7 +76,7 @@ impl Widget<AppState> for TerminalWidget {
                 self.timer_id = ctx.request_timer(Duration::from_millis(REFRESH_RATE));
             }
             Event::KeyDown(k) => {
-                println!("Key Down: {:?}", k);
+                //println!("Key Down: {:?}", k);
                 if !k.repeat {
                     if let Some(k) = translate_key(&k.key) {
                         let _ = self.key_sender.try_send(KeyboardMessage::down(k));
@@ -84,7 +84,7 @@ impl Widget<AppState> for TerminalWidget {
                 }
             }
             Event::KeyUp(k) => {
-                println!("Key Up: {:?}", k);
+                //println!("Key Up: {:?}", k);
                 if let Some(k) = translate_key(&k.key) {
                     let _ = self.key_sender.try_send(KeyboardMessage::up(k));
                 }
