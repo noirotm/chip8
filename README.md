@@ -16,7 +16,7 @@ The beeper component uses the [cpal](https://crates.io/crates/cpal) library.
 
 ## Usage
 
-        chip8.exe [FLAGS] <filename>
+        chip8 [FLAGS] <filename>
 
     ARGS:
         <filename>    Sets the input filename of the image to run
