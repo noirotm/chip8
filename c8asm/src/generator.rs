@@ -21,8 +21,8 @@ fn labels(lines: &[Line]) -> Result<HashMap<String, usize>, String> {
                 return Err(format!("duplicate label: '{}'", label));
             }
             labels.insert(label.to_owned(), addr);
-            addr += l.size();
         }
+        addr += l.size();
     }
 
     Ok(labels)
@@ -40,6 +40,7 @@ fn opcodes<W: Write>(
             _ => {}
         }
     }
+
     Ok(())
 }
 
