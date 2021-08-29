@@ -15,6 +15,10 @@ edition = "2018"
 path = "src/main.rs"
 name = "chip8"
 
+[[bin]]
+path = "c8asm/src/main.rs"
+name = "c8asm"
+
 [workspace]
 members = [
     "chip8-system",
@@ -25,5 +29,6 @@ members = [
 [dependencies]
 chip8-system = { path = "chip8-system" }
 clap = "3.0.0-beta.2"
-sound-cpal = { path = "sound-cpal" }
 gui-druid = { path = "gui-druid" }
+nom = "7.0.0"
+sound-cpal = { path = "sound-cpal" }

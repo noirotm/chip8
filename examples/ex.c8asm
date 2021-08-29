@@ -1,0 +1,23 @@
+# sample chip-8 program
+# it justs waits for a key press
+# and displays the key on screen
+
+start:  cls             # clear screen
+        ld v0, k        # wait for key
+        call beep       # make some noise
+        ld f, v0        # find sprite for the digit that was entered
+        ld v1, 0x10     # x
+        ld v2, 0x05     # y
+        drw v1, v2, 5   # draw character
+        jp start
+
+# beep function
+beep:   ld v3, 30
+        ld st, v3
+        ret
+
+some_data:
+        0b00011000
+        0b00100100
+        0b00100100
+        0b00011000
