@@ -1,5 +1,5 @@
 # Sample chip-8 program
-# It justs waits for a key press and displays the key on screen.
+# It just waits for a key press and displays the key on screen.
 #
 # To build this:
 # $ c8asm ex.c8asm ex.c8
@@ -24,19 +24,17 @@ beep:
         ret
 
 draw_prompt:
+        ld v2, 1
         ld i, prompt_k
         ld v1, 1
-        ld v2, 1
         drw v1, v2, 5
 
         ld i, prompt_e
         ld v1, 6
-        ld v2, 1
         drw v1, v2, 5
 
         ld i, prompt_y
         ld v1, 11
-        ld v2, 1
         drw v1, v2, 5
 
         ret
