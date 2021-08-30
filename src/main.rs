@@ -10,11 +10,11 @@ use std::thread;
 #[derive(Clap)]
 struct Options {
     /// Load and store instructions do not increment the I register
-    #[clap(long)]
+    #[clap(long, short)]
     load_store_ignores_i: bool,
 
     /// Shift operations read the VX register instead of VY
-    #[clap(long)]
+    #[clap(long, short)]
     shift_reads_vx: bool,
 
     /// Sets the input filename of the image to run
