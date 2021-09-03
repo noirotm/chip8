@@ -1,5 +1,4 @@
 use crossbeam_channel::{Receiver, Sender, TrySendError};
-use std::sync::{Arc, RwLock};
 use std::thread;
 
 pub trait InputPort<TInput> {
@@ -8,12 +7,6 @@ pub trait InputPort<TInput> {
 
 pub trait OutputPort<TOutput> {
     fn output(&self) -> Receiver<TOutput>;
-}
-
-pub type Shared<T> = Arc<RwLock<T>>;
-
-pub trait SharedData<T> {
-    fn data(&self) -> Shared<T>;
 }
 
 pub struct PortAdapter<TFrom, TInto> {

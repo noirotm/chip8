@@ -1,4 +1,4 @@
-use crate::port::{InputPort, Shared};
+use crate::port::InputPort;
 use crossbeam_channel::Sender;
 use num_derive::FromPrimitive;
 use parking_lot::{Condvar, Mutex};
@@ -57,7 +57,7 @@ impl KeyboardMessage {
 }
 
 pub(crate) struct KeyboardController {
-    key_states: Shared<[KeyState; 16]>,
+    key_states: Arc<RwLock<[KeyState; 16]>>,
     wait_for_key: Arc<Mutex<bool>>,
     wake_cond: Arc<(Mutex<Option<Key>>, Condvar)>,
     sender: Sender<KeyboardMessage>,

@@ -1,6 +1,6 @@
-use crate::port::{Shared, SharedData};
+use crate::port::OutputPort;
 use bitvec::prelude::*;
-use std::sync::{Arc, RwLock};
+use crossbeam_channel::{Receiver, Sender};
 
 pub const DISPLAY_WIDTH: usize = 64;
 pub const DISPLAY_HEIGHT: usize = 32;
@@ -8,8 +8,19 @@ pub const DISPLAY_BUFFER_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT;
 
 pub type PixelBuffer = BitVec;
 
+pub fn pixel_buffer() -> PixelBuffer {
+    bitvec![0; DISPLAY_BUFFER_SIZE]
+}
+
+pub enum DisplayMessage {
+    Clear,
+    Update(PixelBuffer),
+}
+
 pub(crate) struct DisplayBuffer {
-    pixels: Shared<PixelBuffer>,
+    pixels: PixelBuffer,
+    sender: Sender<DisplayMessage>,
+    receiver: Receiver<DisplayMessage>,
 }
 
 impl Default for DisplayBuffer {
@@ -20,43 +31,53 @@ impl Default for DisplayBuffer {
 
 impl DisplayBuffer {
     pub fn new() -> Self {
+        let (s, r) = crossbeam_channel::unbounded();
+
         Self {
-            pixels: Arc::new(RwLock::new(bitvec![0; DISPLAY_BUFFER_SIZE])),
+            pixels: pixel_buffer(),
+            sender: s,
+            receiver: r,
         }
     }
 
     pub fn clear(&mut self) {
-        if let Ok(mut pixels) = self.pixels.write() {
-            *pixels = bitvec![0; DISPLAY_BUFFER_SIZE];
-        }
+        self.pixels = pixel_buffer();
+        let _ = self.sender.try_send(DisplayMessage::Clear);
     }
 
     pub fn draw_sprite(&mut self, (x, y): (u8, u8), sprite: &[u8]) -> bool {
         let mut collision = false;
-        if let Ok(mut pixels) = self.pixels.write() {
-            for (row, &data) in sprite.iter().enumerate() {
-                let py = (y as usize + row) % DISPLAY_HEIGHT;
-                for bit in 0..8u8 {
-                    let px = (x as usize + bit as usize) % DISPLAY_WIDTH;
-                    let i = DISPLAY_WIDTH * py + px;
+        for (row, &data) in sprite.iter().enumerate() {
+            let py = (y as usize + row) % DISPLAY_HEIGHT;
+            for bit in 0..8u8 {
+                let px = (x as usize + bit as usize) % DISPLAY_WIDTH;
+                let i = DISPLAY_WIDTH * py + px;
 
-                    if let Some(mut pixel) = pixels.get_mut(i) {
-                        let prev = *pixel;
-                        let sprite = bit_at(data, 7u8 - bit);
-                        let new = prev ^ sprite;
-                        *pixel = new;
+                if let Some(mut pixel) = self.pixels.get_mut(i) {
+                    let prev = *pixel;
+                    let sprite = bit_at(data, 7u8 - bit);
+                    let new = prev ^ sprite;
+                    *pixel = new;
 
-                        // collision flag set to true if at least a pixel has been switched
-                        // from 1 to 0 during the draw operation
-                        if prev && !new {
-                            collision = true;
-                        }
+                    // collision flag set to true if at least a pixel has been switched
+                    // from 1 to 0 during the draw operation
+                    if prev && !new {
+                        collision = true;
                     }
                 }
             }
         }
+        let _ = self
+            .sender
+            .try_send(DisplayMessage::Update(self.pixels.clone()));
 
         collision
+    }
+}
+
+impl OutputPort<DisplayMessage> for DisplayBuffer {
+    fn output(&self) -> Receiver<DisplayMessage> {
+        self.receiver.clone()
     }
 }
 
@@ -86,12 +107,6 @@ fn debug_pixels() -> PixelBuffer {
     }
 
     pixels
-}
-
-impl SharedData<PixelBuffer> for DisplayBuffer {
-    fn data(&self) -> Shared<PixelBuffer> {
-        self.pixels.clone()
-    }
 }
 
 pub const FONT_SPRITES_ADDRESS: u16 = 0;

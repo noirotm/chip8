@@ -1,8 +1,8 @@
-use crate::display::{font_sprites, DisplayBuffer, PixelBuffer, FONT_SPRITES_ADDRESS};
+use crate::display::{font_sprites, DisplayBuffer, DisplayMessage, FONT_SPRITES_ADDRESS};
 use crate::keyboard::{Key, KeyboardController, KeyboardMessage};
 use crate::memory::{Memory, RESERVED_SIZE};
 use crate::opcode::{parse_opcode, Instr};
-use crate::port::{InputPort, OutputPort, Shared, SharedData};
+use crate::port::{InputPort, OutputPort};
 use crate::timer::{CountDownTimer, ObservableTimer, TimerMessage};
 use bitflags::bitflags;
 use crossbeam_channel::{Receiver, Sender};
@@ -345,9 +345,9 @@ impl System {
     }
 }
 
-impl SharedData<PixelBuffer> for System {
-    fn data(&self) -> Shared<PixelBuffer> {
-        self.display.data()
+impl OutputPort<DisplayMessage> for System {
+    fn output(&self) -> Receiver<DisplayMessage> {
+        self.display.output()
     }
 }
 

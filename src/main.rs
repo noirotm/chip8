@@ -1,5 +1,6 @@
-use chip8_system::port::{connect, SharedData};
+use chip8_system::port::connect;
 use chip8_system::system::Quirks;
+use chip8_system::timer::TimerMessage;
 use chip8_system::System;
 use clap::Clap;
 use gui_druid::Terminal;
@@ -26,10 +27,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut system = System::new()?;
     let beeper = Beeper::new()?;
-    connect(&system, &beeper);
+    connect::<_, _, TimerMessage, _>(&system, &beeper);
 
-    let term = Terminal::new(system.data());
+    let term = Terminal::new();
+
+    // connect term output to system input
     connect(&term, &system);
+
+    // connect system output to term input
+    connect(&system, &term);
 
     // Setup quirks
     if options.load_store_ignores_i {

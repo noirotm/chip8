@@ -1,26 +1,38 @@
-use chip8_system::display::{PixelBuffer, DISPLAY_HEIGHT, DISPLAY_WIDTH};
+use chip8_system::display::{
+    pixel_buffer, DisplayMessage, PixelBuffer, DISPLAY_HEIGHT, DISPLAY_WIDTH,
+};
 use chip8_system::keyboard::{Key, KeyboardMessage};
-use chip8_system::port::{OutputPort, Shared};
+use chip8_system::port::{InputPort, OutputPort};
 use crossbeam_channel::{Receiver, Sender};
 use druid::widget::Align;
 use druid::*;
-use std::time::Duration;
+use std::thread;
 
 const SCALING_FACTOR: f64 = 8.0;
-const REFRESH_RATE: u64 = 100;
+
+pub const UPDATE: Selector<DisplayMessage> = Selector::new("terminal.update");
 
 #[derive(Clone, Data, Lens)]
 struct AppState {}
 
 pub struct Terminal {
-    main_window: WindowDesc<AppState>,
+    app_launcher: AppLauncher<AppState>,
     keyboard_receiver: Receiver<KeyboardMessage>,
+    display_sender: Sender<DisplayMessage>,
+}
+
+impl Default for Terminal {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Terminal {
-    pub fn new(pixels: Shared<PixelBuffer>) -> Self {
-        let (s, r) = crossbeam_channel::bounded(128);
-        let main_window = WindowDesc::new(Align::centered(TerminalWidget::new(s, pixels)))
+    pub fn new() -> Self {
+        let (ks, kr) = crossbeam_channel::bounded(128);
+        let (ds, dr) = crossbeam_channel::bounded(128);
+
+        let main_window = WindowDesc::new(Align::centered(TerminalWidget::new(ks)))
             .title("Chip-8")
             .window_size((
                 DISPLAY_WIDTH as f64 * SCALING_FACTOR + 25.0,
@@ -28,19 +40,29 @@ impl Terminal {
             ))
             .resizable(true);
 
+        let app_launcher = AppLauncher::with_window(main_window);
+
+        // event sink where to push display messages received from the chip8 system
+        let event_sink = app_launcher.get_external_handle();
+
+        thread::spawn(move || {
+            while let Ok(msg) = dr.recv() {
+                event_sink
+                    .submit_command(UPDATE, msg, Target::Global)
+                    .expect("Failed to submit update command");
+            }
+        });
+
         Self {
-            main_window,
-            keyboard_receiver: r,
+            app_launcher,
+            keyboard_receiver: kr,
+            display_sender: ds,
         }
     }
 
     pub fn run(self) {
-        // create the initial app state
-        let initial_state = AppState {};
-
-        // start the application
-        AppLauncher::with_window(self.main_window)
-            .launch(initial_state)
+        self.app_launcher
+            .launch(AppState {})
             .expect("Failed to launch application");
     }
 }
@@ -51,18 +73,22 @@ impl OutputPort<KeyboardMessage> for Terminal {
     }
 }
 
+impl InputPort<DisplayMessage> for Terminal {
+    fn input(&self) -> Sender<DisplayMessage> {
+        self.display_sender.clone()
+    }
+}
+
 struct TerminalWidget {
     key_sender: Sender<KeyboardMessage>,
-    pixels: Shared<PixelBuffer>,
-    timer_id: TimerToken,
+    pixels: PixelBuffer,
 }
 
 impl TerminalWidget {
-    fn new(key_sender: Sender<KeyboardMessage>, pixels: Shared<PixelBuffer>) -> Self {
+    fn new(key_sender: Sender<KeyboardMessage>) -> Self {
         Self {
             key_sender,
-            pixels,
-            timer_id: TimerToken::INVALID,
+            pixels: pixel_buffer(),
         }
     }
 }
@@ -73,7 +99,6 @@ impl Widget<AppState> for TerminalWidget {
             Event::WindowConnected => {
                 ctx.request_focus();
                 ctx.request_paint();
-                self.timer_id = ctx.request_timer(Duration::from_millis(REFRESH_RATE));
             }
             Event::KeyDown(k) => {
                 //println!("Key Down: {:?}", k);
@@ -89,10 +114,13 @@ impl Widget<AppState> for TerminalWidget {
                     let _ = self.key_sender.try_send(KeyboardMessage::up(k));
                 }
             }
-            Event::Timer(id) => {
-                if *id == self.timer_id {
+            Event::Command(c) => {
+                if let Some(dm) = c.get(UPDATE) {
+                    self.pixels = match dm {
+                        DisplayMessage::Clear => pixel_buffer(),
+                        DisplayMessage::Update(b) => b.clone(),
+                    };
                     ctx.request_paint();
-                    self.timer_id = ctx.request_timer(Duration::from_millis(REFRESH_RATE));
                 }
             }
             _ => {}
@@ -126,20 +154,18 @@ impl Widget<AppState> for TerminalWidget {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, _data: &AppState, _env: &Env) {
-        if let Ok(pixels) = self.pixels.try_read() {
-            let bounds = ctx.size().to_rect();
-            ctx.fill(bounds, &Color::BLACK);
+        let bounds = ctx.size().to_rect();
+        ctx.fill(bounds, &Color::BLACK);
 
-            for y in 0..DISPLAY_HEIGHT {
-                for x in 0..DISPLAY_WIDTH {
-                    let i = DISPLAY_WIDTH * y + x;
-                    let r = Rect::from((
-                        Point::new(x as f64 * SCALING_FACTOR, y as f64 * SCALING_FACTOR),
-                        Size::new(SCALING_FACTOR, SCALING_FACTOR),
-                    ));
-                    if let Some(true) = pixels.get(i).as_deref() {
-                        ctx.fill(r, &Color::grey8(200));
-                    }
+        for y in 0..DISPLAY_HEIGHT {
+            for x in 0..DISPLAY_WIDTH {
+                let i = DISPLAY_WIDTH * y + x;
+                let r = Rect::from((
+                    Point::new(x as f64 * SCALING_FACTOR, y as f64 * SCALING_FACTOR),
+                    Size::new(SCALING_FACTOR, SCALING_FACTOR),
+                ));
+                if let Some(true) = self.pixels.get(i).as_deref() {
+                    ctx.fill(r, &Color::grey8(200));
                 }
             }
         }
