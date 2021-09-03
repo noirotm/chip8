@@ -16,7 +16,7 @@ use std::fs::File;
 use std::io::Read;
 use std::ops::{Index, IndexMut};
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use std::{io, thread};
 
 #[derive(Debug)]
@@ -91,6 +91,36 @@ struct Cpu {
     stack: Vec<u16>,
 }
 
+pub struct SystemOptions {
+    cpu_frequency_hz: f64,
+    quirks: Quirks,
+}
+
+impl Default for SystemOptions {
+    fn default() -> Self {
+        Self {
+            cpu_frequency_hz: 500.0,
+            quirks: Quirks::empty(),
+        }
+    }
+}
+
+impl SystemOptions {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn cpu_frequency_hz(&mut self, f: f64) -> &mut Self {
+        self.cpu_frequency_hz = if f < 5000.0 && f > 0.0 { f } else { 500.0 };
+        self
+    }
+
+    pub fn quirk(&mut self, quirk: Quirks) -> &mut Self {
+        self.quirks |= quirk;
+        self
+    }
+}
+
 pub struct System {
     cpu: Cpu,
     delay_timer: CountDownTimer,
@@ -98,11 +128,15 @@ pub struct System {
     keyboard: KeyboardController,
     display: DisplayBuffer,
     memory: Memory,
-    quirks: Quirks,
+    options: SystemOptions,
 }
 
 impl System {
     pub fn new() -> Result<Self, Box<dyn Error>> {
+        Self::new_with_options(Default::default())
+    }
+
+    pub fn new_with_options(options: SystemOptions) -> Result<Self, Box<dyn Error>> {
         let mut memory = Memory::new();
         memory.write_slice(FONT_SPRITES_ADDRESS, font_sprites());
 
@@ -119,13 +153,8 @@ impl System {
             keyboard: Default::default(),
             display: Default::default(),
             memory,
-            quirks: Quirks::empty(),
+            options,
         })
-    }
-
-    pub fn quirk(&mut self, quirk: Quirks) -> &mut Self {
-        self.quirks |= quirk;
-        self
     }
 
     pub fn load_image<P: AsRef<Path>>(&mut self, p: P) -> io::Result<()> {
@@ -142,7 +171,7 @@ impl System {
     }
 
     pub fn run(&mut self) -> Result<(), SystemError> {
-        let tick = Duration::from_secs_f64(1.0 / 500.0); // 500 Hz
+        let tick = Duration::from_secs_f64(1.0 / self.options.cpu_frequency_hz);
         let timer = crossbeam_channel::tick(tick);
         let mut rng = SmallRng::from_entropy();
 
@@ -233,7 +262,7 @@ impl System {
                 self.cpu.v[VReg::VF] = !overflow as u8;
             }
             Instr::ShiftRight(x, y) => {
-                if self.quirks.contains(Quirks::SHIFT_READS_VX) {
+                if self.options.quirks.contains(Quirks::SHIFT_READS_VX) {
                     self.cpu.v[VReg::VF] = self.cpu.v[x] & 1;
                     self.cpu.v[x] >>= 1;
                 } else {
@@ -247,7 +276,7 @@ impl System {
                 self.cpu.v[VReg::VF] = if overflow { 0 } else { 1 };
             }
             Instr::ShiftLeft(x, y) => {
-                if self.quirks.contains(Quirks::SHIFT_READS_VX) {
+                if self.options.quirks.contains(Quirks::SHIFT_READS_VX) {
                     self.cpu.v[VReg::VF] = ((self.cpu.v[x] & 0x80) != 0) as u8;
                     self.cpu.v[x] <<= 1;
                 } else {
@@ -323,7 +352,7 @@ impl System {
             Instr::SaveRegs(x) => {
                 self.memory
                     .write_slice(self.cpu.i, &self.cpu.v[0..=x as usize]);
-                if !self.quirks.contains(Quirks::LOAD_STORE_IGNORES_I) {
+                if !self.options.quirks.contains(Quirks::LOAD_STORE_IGNORES_I) {
                     self.cpu.i += x as u16 + 1;
                 }
             }
@@ -333,7 +362,7 @@ impl System {
                     .read_slice(self.cpu.i, x as u8 + 1)
                     .ok_or(SystemError::MemoryReadOverflow)?;
                 self.cpu.v[0..=x as usize].copy_from_slice(s);
-                if !self.quirks.contains(Quirks::LOAD_STORE_IGNORES_I) {
+                if !self.options.quirks.contains(Quirks::LOAD_STORE_IGNORES_I) {
                     self.cpu.i += x as u16 + 1;
                 }
             }
