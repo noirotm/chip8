@@ -1,15 +1,14 @@
 use crate::port::OutputPort;
-use bitvec::prelude::*;
 use crossbeam_channel::{Receiver, Sender};
 
 pub const DISPLAY_WIDTH: usize = 64;
 pub const DISPLAY_HEIGHT: usize = 32;
 pub const DISPLAY_BUFFER_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT;
 
-pub type PixelBuffer = BitVec;
+pub type PixelBuffer = Vec<u8>;
 
 pub fn pixel_buffer() -> PixelBuffer {
-    bitvec![0; DISPLAY_BUFFER_SIZE]
+    vec![0; DISPLAY_BUFFER_SIZE]
 }
 
 pub enum DisplayMessage {
@@ -31,8 +30,7 @@ impl Default for DisplayBuffer {
 
 impl DisplayBuffer {
     pub fn new() -> Self {
-        let (s, r) = crossbeam_channel::unbounded();
-
+        let (s, r) = crossbeam_channel::bounded(16);
         Self {
             pixels: pixel_buffer(),
             sender: s,
@@ -53,15 +51,15 @@ impl DisplayBuffer {
                 let px = (x as usize + bit as usize) % DISPLAY_WIDTH;
                 let i = DISPLAY_WIDTH * py + px;
 
-                if let Some(mut pixel) = self.pixels.get_mut(i) {
+                if let Some(pixel) = self.pixels.get_mut(i) {
                     let prev = *pixel;
-                    let sprite = bit_at(data, 7u8 - bit);
+                    let sprite = if bit_at(data, 7u8 - bit) { 0xFF } else { 0 };
                     let new = prev ^ sprite;
                     *pixel = new;
 
                     // collision flag set to true if at least a pixel has been switched
                     // from 1 to 0 during the draw operation
-                    if prev && !new {
+                    if prev != 0 && new == 0 {
                         collision = true;
                     }
                 }
@@ -91,16 +89,16 @@ fn bit_at(input: u8, n: u8) -> bool {
 
 #[allow(unused)]
 fn debug_pixels() -> PixelBuffer {
-    let mut pixels = bitvec![];
+    let mut pixels = vec![];
 
     for _ in 0..DISPLAY_HEIGHT / 2 {
-        let mut lines = bitvec![
+        let mut lines = vec![
             0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
             1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
             0, 1, 0, 1, 0, 1, // line
             1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
             0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-            1, 0, 1, 0, 1, 0
+            1, 0, 1, 0, 1, 0,
         ];
 
         pixels.append(&mut lines);

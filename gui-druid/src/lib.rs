@@ -4,6 +4,7 @@ use chip8_system::display::{
 use chip8_system::keyboard::{Key, KeyboardMessage};
 use chip8_system::port::{InputPort, OutputPort};
 use crossbeam_channel::{Receiver, Sender};
+use druid::piet::{ImageFormat, InterpolationMode};
 use druid::widget::Align;
 use druid::*;
 use std::thread;
@@ -45,10 +46,11 @@ impl Terminal {
         // event sink where to push display messages received from the chip8 system
         let event_sink = app_launcher.get_external_handle();
 
+        // thread reading display events to forward them to our widget
         thread::spawn(move || {
             while let Ok(msg) = dr.recv() {
                 event_sink
-                    .submit_command(UPDATE, msg, Target::Global)
+                    .submit_command(UPDATE, msg, Target::Auto)
                     .expect("Failed to submit update command");
             }
         });
@@ -154,20 +156,14 @@ impl Widget<AppState> for TerminalWidget {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, _data: &AppState, _env: &Env) {
-        let bounds = ctx.size().to_rect();
-        ctx.fill(bounds, &Color::BLACK);
-
-        for y in 0..DISPLAY_HEIGHT {
-            for x in 0..DISPLAY_WIDTH {
-                let i = DISPLAY_WIDTH * y + x;
-                let r = Rect::from((
-                    Point::new(x as f64 * SCALING_FACTOR, y as f64 * SCALING_FACTOR),
-                    Size::new(SCALING_FACTOR, SCALING_FACTOR),
-                ));
-                if let Some(true) = self.pixels.get(i).as_deref() {
-                    ctx.fill(r, &Color::grey8(200));
-                }
-            }
+        if let Ok(img) = ctx.make_image(
+            DISPLAY_WIDTH,
+            DISPLAY_HEIGHT,
+            &self.pixels,
+            ImageFormat::Grayscale,
+        ) {
+            let bounds = ctx.size().to_rect();
+            ctx.draw_image(&img, bounds, InterpolationMode::NearestNeighbor);
         }
     }
 }
