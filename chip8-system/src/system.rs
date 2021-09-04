@@ -10,13 +10,13 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
+use spin_sleep::LoopHelper;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::io::Read;
 use std::ops::{Index, IndexMut};
 use std::path::Path;
-use std::time::{Duration, SystemTime};
 use std::{io, thread};
 
 #[derive(Debug)]
@@ -171,14 +171,15 @@ impl System {
     }
 
     pub fn run(&mut self) -> Result<(), SystemError> {
-        let tick = Duration::from_secs_f64(1.0 / self.options.cpu_frequency_hz);
-        let timer = crossbeam_channel::tick(tick);
         let mut rng = SmallRng::from_entropy();
+        let mut loop_helper =
+            LoopHelper::builder().build_with_target_rate(self.options.cpu_frequency_hz);
 
-        while timer.recv().is_ok() {
+        loop {
+            let _ = loop_helper.loop_start();
             self.execute_next_inst(&mut rng)?;
+            loop_helper.loop_sleep();
         }
-        Ok(())
     }
 
     fn execute_next_inst(&mut self, rng: &mut impl Rng) -> Result<(), SystemError> {

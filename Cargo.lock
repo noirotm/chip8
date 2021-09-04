@@ -242,6 +242,7 @@ dependencies = [
  "num-traits",
  "parking_lot",
  "rand",
+ "spin_sleep",
 ]
 
 [[package]]
@@ -1849,6 +1850,16 @@ dependencies = [
  "chip8-system",
  "cpal",
  "crossbeam-channel",
+]
+
+[[package]]
+name = "spin_sleep"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a98101bdc3833e192713c2af0b0dd2614f50d1cf1f7a97c5221b7aac052acc7"
+dependencies = [
+ "once_cell",
+ "winapi",
 ]
 
 [[package]]

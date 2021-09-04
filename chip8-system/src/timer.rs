@@ -1,10 +1,12 @@
 use crate::port::OutputPort;
 use crossbeam_channel::{Receiver, Sender};
+use spin_sleep::LoopHelper;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::Duration;
+
+const TIMER_RESOLUTION: f64 = 60.0;
 
 pub enum TimerMessage {
     Started,
@@ -42,12 +44,12 @@ impl CountDownTimer {
         let s_clone = s.clone();
 
         let ticker = thread::spawn(move || {
-            let tick = Duration::from_secs_f64(1.0 / 60.0); // 60 Hz
-            let timer = crossbeam_channel::tick(tick);
+            let mut loop_helper = LoopHelper::builder().build_with_target_rate(TIMER_RESOLUTION);
 
             loop {
                 thread::park();
-                while timer.recv().is_ok() {
+                loop {
+                    let _ = loop_helper.loop_start();
                     let r = value_clone.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
                         if v == 0 {
                             None
@@ -60,6 +62,7 @@ impl CountDownTimer {
                         let _ = s_clone.try_send(TimerMessage::Stopped);
                         break;
                     }
+                    loop_helper.loop_sleep();
                 }
                 if stop_clone.load(Ordering::Relaxed) {
                     break;
@@ -114,7 +117,7 @@ impl Drop for CountDownTimer {
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use std::time::Instant;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn timer_works() {
