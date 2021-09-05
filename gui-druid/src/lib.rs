@@ -8,12 +8,45 @@ use druid::widget::Align;
 use druid::*;
 use std::thread;
 
+// expose Color to the outside
+pub use druid::piet::{Color, ColorParseError};
+
 const SCALING_FACTOR: f64 = 8.0;
 
 pub const UPDATE: Selector<DisplayMessage> = Selector::new("terminal.update");
 
 #[derive(Clone, Data, Lens)]
 struct AppState {}
+
+pub struct TerminalOptions {
+    background_color: Color,
+    foreground_color: Color,
+}
+
+impl Default for TerminalOptions {
+    fn default() -> Self {
+        Self {
+            background_color: Color::BLACK,
+            foreground_color: Color::GRAY,
+        }
+    }
+}
+
+impl TerminalOptions {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn background_color(&mut self, color: Color) -> &mut Self {
+        self.background_color = color;
+        self
+    }
+
+    pub fn foreground_color(&mut self, color: Color) -> &mut Self {
+        self.foreground_color = color;
+        self
+    }
+}
 
 pub struct Terminal {
     app_launcher: AppLauncher<AppState>,
@@ -29,10 +62,14 @@ impl Default for Terminal {
 
 impl Terminal {
     pub fn new() -> Self {
+        Self::new_with_options(Default::default())
+    }
+
+    pub fn new_with_options(options: TerminalOptions) -> Self {
         let (ks, kr) = crossbeam_channel::bounded(128);
         let (ds, dr) = crossbeam_channel::bounded(128);
 
-        let main_window = WindowDesc::new(Align::centered(TerminalWidget::new(ks)))
+        let main_window = WindowDesc::new(Align::centered(TerminalWidget::new(ks, options)))
             .title("Chip-8")
             .window_size((
                 DISPLAY_WIDTH as f64 * SCALING_FACTOR + 25.0,
@@ -82,13 +119,15 @@ impl InputPort<DisplayMessage> for Terminal {
 struct TerminalWidget {
     key_sender: Sender<KeyboardMessage>,
     pixels: PixelBuffer,
+    options: TerminalOptions,
 }
 
 impl TerminalWidget {
-    fn new(key_sender: Sender<KeyboardMessage>) -> Self {
+    fn new(key_sender: Sender<KeyboardMessage>, options: TerminalOptions) -> Self {
         Self {
             key_sender,
             pixels: pixel_buffer(),
+            options,
         }
     }
 }
@@ -155,7 +194,7 @@ impl Widget<AppState> for TerminalWidget {
 
     fn paint(&mut self, ctx: &mut PaintCtx, _data: &AppState, _env: &Env) {
         let bounds = ctx.size().to_rect();
-        ctx.fill(bounds, &Color::BLACK);
+        ctx.fill(bounds, &self.options.background_color);
 
         for y in 0..DISPLAY_HEIGHT {
             for x in 0..DISPLAY_WIDTH {
@@ -165,7 +204,7 @@ impl Widget<AppState> for TerminalWidget {
                     Size::new(SCALING_FACTOR, SCALING_FACTOR),
                 ));
                 if let Some(true) = self.pixels.get(i).as_deref() {
-                    ctx.fill(r, &Color::grey8(200));
+                    ctx.fill(r, &self.options.foreground_color);
                 }
             }
         }
