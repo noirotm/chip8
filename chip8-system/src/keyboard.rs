@@ -1,6 +1,7 @@
 use crate::port::InputPort;
 use crossbeam_channel::Sender;
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use parking_lot::{Condvar, Mutex};
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -29,6 +30,12 @@ pub enum Key {
     KeyD = 0xd,
     KeyE = 0xe,
     KeyF = 0xf,
+}
+
+impl Key {
+    pub fn from(v: u8) -> Option<Key> {
+        Key::from_u8(v)
+    }
 }
 
 pub struct KeyboardMessage {

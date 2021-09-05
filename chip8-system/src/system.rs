@@ -7,7 +7,6 @@ use crate::timer::{CountDownTimer, ObservableTimer, TimerMessage};
 use bitflags::bitflags;
 use crossbeam_channel::{Receiver, Sender};
 use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use spin_sleep::LoopHelper;
@@ -309,14 +308,14 @@ impl System {
                     .draw_sprite((self.cpu.v[x], self.cpu.v[y]), bytes);
             }
             Instr::SkipKeyPressed(x) => {
-                if let Some(k) = Key::from_u8(self.cpu.v[x]) {
+                if let Some(k) = Key::from(self.cpu.v[x]) {
                     if self.keyboard.is_key_down(k) {
                         self.cpu.pc += 2;
                     }
                 }
             }
             Instr::SkipKeyNotPressed(x) => {
-                if let Some(k) = Key::from_u8(self.cpu.v[x]) {
+                if let Some(k) = Key::from(self.cpu.v[x]) {
                     if !self.keyboard.is_key_down(k) {
                         self.cpu.pc += 2;
                     }

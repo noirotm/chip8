@@ -9,7 +9,10 @@ use druid::*;
 use std::thread;
 
 // expose Color to the outside
+use crate::keyboard_map::KeyboardMap;
 pub use druid::piet::{Color, ColorParseError};
+
+pub mod keyboard_map;
 
 const SCALING_FACTOR: f64 = 8.0;
 
@@ -21,6 +24,7 @@ struct AppState {}
 pub struct TerminalOptions {
     background_color: Color,
     foreground_color: Color,
+    keyboard_map: KeyboardMap,
 }
 
 impl Default for TerminalOptions {
@@ -28,6 +32,7 @@ impl Default for TerminalOptions {
         Self {
             background_color: Color::BLACK,
             foreground_color: Color::GRAY,
+            keyboard_map: Default::default(),
         }
     }
 }
@@ -44,6 +49,11 @@ impl TerminalOptions {
 
     pub fn foreground_color(&mut self, color: Color) -> &mut Self {
         self.foreground_color = color;
+        self
+    }
+
+    pub fn keyboard_map(&mut self, map: KeyboardMap) -> &mut Self {
+        self.keyboard_map = map;
         self
     }
 }
@@ -130,6 +140,14 @@ impl TerminalWidget {
             options,
         }
     }
+
+    fn translate_key(&self, k: &KbKey) -> Option<Key> {
+        if let KbKey::Character(s) = k {
+            self.options.keyboard_map.key(s)
+        } else {
+            None
+        }
+    }
 }
 
 impl Widget<AppState> for TerminalWidget {
@@ -142,14 +160,14 @@ impl Widget<AppState> for TerminalWidget {
             Event::KeyDown(k) => {
                 //println!("Key Down: {:?}", k);
                 if !k.repeat {
-                    if let Some(k) = translate_key(&k.key) {
+                    if let Some(k) = self.translate_key(&k.key) {
                         let _ = self.key_sender.try_send(KeyboardMessage::down(k));
                     }
                 }
             }
             Event::KeyUp(k) => {
                 //println!("Key Up: {:?}", k);
-                if let Some(k) = translate_key(&k.key) {
+                if let Some(k) = self.translate_key(&k.key) {
                     let _ = self.key_sender.try_send(KeyboardMessage::up(k));
                 }
             }
@@ -208,31 +226,5 @@ impl Widget<AppState> for TerminalWidget {
                 }
             }
         }
-    }
-}
-
-fn translate_key(k: &KbKey) -> Option<Key> {
-    if let KbKey::Character(s) = k {
-        match s.as_str() {
-            "0" => Some(Key::Key0),
-            "1" => Some(Key::Key1),
-            "2" => Some(Key::Key2),
-            "3" => Some(Key::Key3),
-            "4" => Some(Key::Key4),
-            "5" => Some(Key::Key5),
-            "6" => Some(Key::Key6),
-            "7" => Some(Key::Key7),
-            "8" => Some(Key::Key8),
-            "9" => Some(Key::Key9),
-            "a" => Some(Key::KeyA),
-            "b" => Some(Key::KeyB),
-            "c" => Some(Key::KeyC),
-            "d" => Some(Key::KeyD),
-            "e" => Some(Key::KeyE),
-            "f" => Some(Key::KeyF),
-            _ => None,
-        }
-    } else {
-        None
     }
 }

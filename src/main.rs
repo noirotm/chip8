@@ -3,6 +3,7 @@ use chip8_system::system::{Quirks, SystemOptions};
 use chip8_system::timer::TimerMessage;
 use chip8_system::System;
 use clap::Clap;
+use gui_druid::keyboard_map::load_profiles;
 use gui_druid::{Color, ColorParseError, Terminal, TerminalOptions};
 use sound_cpal::Beeper;
 use std::error::Error;
@@ -31,7 +32,11 @@ struct Options {
     #[clap(long, short, parse(try_from_str = parse_color))]
     fg_color: Option<Color>,
 
-    /// Sets input filename of the image to run
+    /// Set profile mapping physical to virtual keyboard (supported profiles: default, qwerty, azerty)
+    #[clap(long, short)]
+    kb_profile: Option<String>,
+
+    /// Set input filename of the image to run
     filename: PathBuf,
 }
 
@@ -67,6 +72,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     if let Some(c) = options.fg_color {
         term_opts.foreground_color(c);
+    }
+    if let Some(profile) = options.kb_profile {
+        let mut profiles = load_profiles();
+        if let Some(km) = profiles.remove(&profile) {
+            term_opts.keyboard_map(km);
+        }
     }
 
     let term = Terminal::new_with_options(term_opts);
