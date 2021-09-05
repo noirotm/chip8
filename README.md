@@ -18,16 +18,30 @@ The beeper component uses the [cpal](https://crates.io/crates/cpal) library.
 ## Usage
 
     USAGE:
-        chip8.exe [FLAGS] <filename>
+        chip8.exe [FLAGS] [OPTIONS] <FILENAME>
     
     ARGS:
-        <filename>    Sets the input filename of the image to run
+        <FILENAME>    Set input filename of the image to run
     
     FLAGS:
-        -h, --help                    Prints help information
+        -h, --help                    Print help information
         -l, --load-store-ignores-i    Load and store instructions do not increment the I register
         -s, --shift-reads-vx          Shift operations read the VX register instead of VY
-        -V, --version                 Prints version information
+        -V, --version                 Print version information
+    
+    OPTIONS:
+        -b, --bg-color <BG_COLOR>
+            Set background color for the gui (hex HTML-like RGB color value)
+
+        -c, --cpu-frequency <CPU_FREQUENCY>
+            Set CPU frequency (> 0 and < 5000 Hz)
+
+        -f, --fg-color <FG_COLOR>
+            Set foreground color for the gui (hex HTML-like RGB color value)
+
+        -k, --kb-profile <KB_PROFILE>
+            Set profile mapping physical to virtual keyboard (supported profiles: default, qwerty,
+            azerty)
 
 ## Assembler
 
