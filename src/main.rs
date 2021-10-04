@@ -1,7 +1,5 @@
 use chip8_system::port::connect;
-use chip8_system::system::{Quirks, SystemOptions};
-use chip8_system::timer::TimerMessage;
-use chip8_system::System;
+use chip8_system::system::{Quirks, System, SystemOptions};
 use clap::Clap;
 use gui_druid::keyboard_map::load_profiles;
 use gui_druid::{Color, ColorParseError, Terminal, TerminalOptions};
@@ -63,7 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut system = System::new_with_options(sys_opts)?;
     let beeper = Beeper::new()?;
-    connect::<_, _, TimerMessage, _>(&system, &beeper);
+    connect(&system.sound_timer, &beeper);
 
     // terminal options
     let mut term_opts = TerminalOptions::new();
@@ -83,10 +81,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let term = Terminal::new_with_options(term_opts);
 
     // connect term output to system input
-    connect(&term, &system);
+    connect(&term, &system.keyboard);
 
     // connect system output to term input
-    connect(&system, &term);
+    connect(&system.display, &term);
 
     // load program to run
     let filename = options.filename;

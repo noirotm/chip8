@@ -1,11 +1,9 @@
-use crate::display::{font_sprites, DisplayBuffer, DisplayMessage, FONT_SPRITES_ADDRESS};
-use crate::keyboard::{Key, KeyboardController, KeyboardMessage};
+use crate::display::{font_sprites, DisplayBuffer, FONT_SPRITES_ADDRESS};
+use crate::keyboard::{Key, KeyboardController};
 use crate::memory::{Memory, RESERVED_SIZE};
 use crate::opcode::{parse_opcode, Instr};
-use crate::port::{InputPort, OutputPort};
-use crate::timer::{CountDownTimer, ObservableTimer, TimerMessage};
+use crate::timer::{CountDownTimer, ObservableTimer};
 use bitflags::bitflags;
-use crossbeam_channel::{Receiver, Sender};
 use num_derive::FromPrimitive;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -123,9 +121,9 @@ impl SystemOptions {
 pub struct System {
     cpu: Cpu,
     delay_timer: CountDownTimer,
-    sound_timer: CountDownTimer,
-    keyboard: KeyboardController,
-    display: DisplayBuffer,
+    pub sound_timer: CountDownTimer,
+    pub keyboard: KeyboardController,
+    pub display: DisplayBuffer,
     memory: Memory,
     options: SystemOptions,
 }
@@ -371,23 +369,5 @@ impl System {
         self.cpu.pc += 2;
 
         Ok(())
-    }
-}
-
-impl OutputPort<DisplayMessage> for System {
-    fn output(&self) -> Receiver<DisplayMessage> {
-        self.display.output()
-    }
-}
-
-impl InputPort<KeyboardMessage> for System {
-    fn input(&self) -> Sender<KeyboardMessage> {
-        self.keyboard.input()
-    }
-}
-
-impl OutputPort<TimerMessage> for System {
-    fn output(&self) -> Receiver<TimerMessage> {
-        self.sound_timer.output()
     }
 }

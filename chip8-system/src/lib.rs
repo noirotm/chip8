@@ -1,5 +1,3 @@
-pub use system::System;
-
 pub mod display;
 pub mod keyboard;
 pub mod memory;

@@ -63,7 +63,7 @@ impl KeyboardMessage {
     }
 }
 
-pub(crate) struct KeyboardController {
+pub struct KeyboardController {
     key_states: Arc<RwLock<[KeyState; 16]>>,
     wait_for_key: Arc<Mutex<bool>>,
     wake_cond: Arc<(Mutex<Option<Key>>, Condvar)>,
@@ -77,7 +77,7 @@ impl Default for KeyboardController {
 }
 
 impl KeyboardController {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let (s, r) = crossbeam_channel::bounded(128);
 
         let key_states = Arc::new(RwLock::new([KeyState::Up; 16]));
@@ -121,14 +121,14 @@ impl KeyboardController {
         }
     }
 
-    pub fn is_key_down(&self, key: Key) -> bool {
+    pub(crate) fn is_key_down(&self, key: Key) -> bool {
         self.key_states
             .read()
             .map(|ks| ks[key as usize] == KeyState::Down)
             .unwrap_or(false)
     }
 
-    pub fn wait_for_key_press(&self) -> Key {
+    pub(crate) fn wait_for_key_press(&self) -> Key {
         {
             // register wait
             *self.wait_for_key.lock() = true;

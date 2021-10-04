@@ -17,7 +17,7 @@ pub enum DisplayMessage {
     Update(PixelBuffer),
 }
 
-pub(crate) struct DisplayBuffer {
+pub struct DisplayBuffer {
     pixels: PixelBuffer,
     sender: Sender<DisplayMessage>,
     receiver: Receiver<DisplayMessage>,
@@ -30,7 +30,7 @@ impl Default for DisplayBuffer {
 }
 
 impl DisplayBuffer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let (s, r) = crossbeam_channel::unbounded();
 
         Self {
@@ -40,7 +40,7 @@ impl DisplayBuffer {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.pixels = pixel_buffer();
         let _ = self.sender.try_send(DisplayMessage::Clear);
     }
