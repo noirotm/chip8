@@ -18,31 +18,33 @@ The beeper component uses the [cpal](https://crates.io/crates/cpal) library.
 ## Usage
 
     USAGE:
-        chip8.exe [FLAGS] [OPTIONS] <FILENAME>
+        chip8.exe [OPTIONS] <FILENAME>
     
     ARGS:
         <FILENAME>    Set input filename of the image to run
     
     FLAGS:
-        -d, --draw-wraps-pixels       Draw operations wrap pixels around the edges of the screen
-        -h, --help                    Print help information
-        -l, --load-store-ignores-i    Load and store instructions do not increment the I register
-        -s, --shift-reads-vx          Shift operations read the VX register instead of VY
-        -V, --version                 Print version information
+        -h, --help       Print help information
+        -V, --version    Print version information
     
     OPTIONS:
         -b, --bg-color <BG_COLOR>
-            Set background color for the gui (hex HTML-like RGB color value)
-
+                Set background color for the gui (hex HTML-like RGB color value)
+        
         -c, --cpu-frequency <CPU_FREQUENCY>
-            Set CPU frequency (> 0 and < 5000 Hz)
-
+                Set CPU frequency (> 0 and < 5000 Hz)
+    
         -f, --fg-color <FG_COLOR>
-            Set foreground color for the gui (hex HTML-like RGB color value)
-
+                Set foreground color for the gui (hex HTML-like RGB color value)
+    
         -k, --kb-profile <KB_PROFILE>
-            Set profile mapping physical to virtual keyboard (supported profiles: default, qwerty,
-            azerty)
+                Set profile mapping physical to virtual keyboard (supported profiles: default, qwerty,
+                azerty)
+    
+    QUIRKS:
+        -d, --draw-wraps-pixels       Draw operations wrap pixels around the edges of the screen
+        -l, --load-store-ignores-i    Load and store instructions do not increment the I register
+        -s, --shift-reads-vx          Shift operations read the VX register instead of VY
 
 ## Assembler
 

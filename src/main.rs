@@ -10,18 +10,6 @@ use std::thread;
 
 #[derive(Clap)]
 struct Options {
-    /// Load and store instructions do not increment the I register
-    #[clap(long, short)]
-    load_store_ignores_i: bool,
-
-    /// Shift operations read the VX register instead of VY
-    #[clap(long, short)]
-    shift_reads_vx: bool,
-
-    /// Draw operations wrap pixels around the edges of the screen
-    #[clap(long, short)]
-    draw_wraps_pixels: bool,
-
     /// Set CPU frequency (> 0 and < 5000 Hz)
     #[clap(long, short)]
     cpu_frequency: Option<f64>,
@@ -37,6 +25,18 @@ struct Options {
     /// Set profile mapping physical to virtual keyboard (supported profiles: default, qwerty, azerty)
     #[clap(long, short)]
     kb_profile: Option<String>,
+
+    /// Load and store instructions do not increment the I register
+    #[clap(long, short, help_heading(Some("QUIRKS")))]
+    load_store_ignores_i: bool,
+
+    /// Shift operations read the VX register instead of VY
+    #[clap(long, short, help_heading(Some("QUIRKS")))]
+    shift_reads_vx: bool,
+
+    /// Draw operations wrap pixels around the edges of the screen
+    #[clap(long, short, help_heading(Some("QUIRKS")))]
+    draw_wraps_pixels: bool,
 
     /// Set input filename of the image to run
     filename: PathBuf,
