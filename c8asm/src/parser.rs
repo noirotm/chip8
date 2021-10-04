@@ -354,7 +354,7 @@ mod tests {
         assert_eq!(comment(s), Ok(("", " a comment")));
 
         let s = "# a comment\n";
-        assert_eq!(comment(s), Ok(("", " a comment")));
+        assert_eq!(comment(s), Ok(("\n", " a comment")));
     }
 
     #[test]
