@@ -24,6 +24,7 @@ The beeper component uses the [cpal](https://crates.io/crates/cpal) library.
         <FILENAME>    Set input filename of the image to run
     
     FLAGS:
+        -d, --draw-wraps-pixels       Draw operations wrap pixels around the edges of the screen
         -h, --help                    Print help information
         -l, --load-store-ignores-i    Load and store instructions do not increment the I register
         -s, --shift-reads-vx          Shift operations read the VX register instead of VY

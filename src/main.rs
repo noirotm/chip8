@@ -18,6 +18,10 @@ struct Options {
     #[clap(long, short)]
     shift_reads_vx: bool,
 
+    /// Draw operations wrap pixels around the edges of the screen
+    #[clap(long, short)]
+    draw_wraps_pixels: bool,
+
     /// Set CPU frequency (> 0 and < 5000 Hz)
     #[clap(long, short)]
     cpu_frequency: Option<f64>,
@@ -57,6 +61,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     if options.shift_reads_vx {
         sys_opts.quirk(Quirks::SHIFT_READS_VX);
+    }
+    if options.draw_wraps_pixels {
+        sys_opts.quirk(Quirks::DRAW_WRAPS_PIXELS);
     }
 
     let mut system = System::new_with_options(sys_opts)?;

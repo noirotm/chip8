@@ -45,26 +45,24 @@ impl DisplayBuffer {
         let _ = self.sender.try_send(DisplayMessage::Clear);
     }
 
-    pub fn draw_sprite(&mut self, (x, y): (u8, u8), sprite: &[u8]) -> bool {
+    pub(crate) fn draw_sprite_clipped(&mut self, (x, y): (u8, u8), sprite: &[u8]) -> bool {
         let mut collision = false;
+        let x = x as usize % DISPLAY_WIDTH;
+        let y = y as usize % DISPLAY_HEIGHT;
         for (row, &data) in sprite.iter().enumerate() {
-            let py = (y as usize + row) % DISPLAY_HEIGHT;
+            let py = y + row;
+
+            // if we go beyond the screen limits, just stop
+            if py >= DISPLAY_HEIGHT {
+                break;
+            }
+
             for bit in 0..8u8 {
-                let px = (x as usize + bit as usize) % DISPLAY_WIDTH;
-                let i = DISPLAY_WIDTH * py + px;
-
-                if let Some(mut pixel) = self.pixels.get_mut(i) {
-                    let prev = *pixel;
-                    let sprite = bit_at(data, 7u8 - bit);
-                    let new = prev ^ sprite;
-                    *pixel = new;
-
-                    // collision flag set to true if at least a pixel has been switched
-                    // from 1 to 0 during the draw operation
-                    if prev && !new {
-                        collision = true;
-                    }
+                let px = x + bit as usize;
+                if px >= DISPLAY_WIDTH {
+                    break;
                 }
+                collision |= self.update_pixel(px, py, bit, data);
             }
         }
         let _ = self
@@ -72,6 +70,38 @@ impl DisplayBuffer {
             .try_send(DisplayMessage::Update(self.pixels.clone()));
 
         collision
+    }
+
+    pub(crate) fn draw_sprite_wrapped(&mut self, (x, y): (u8, u8), sprite: &[u8]) -> bool {
+        let mut collision = false;
+        for (row, &data) in sprite.iter().enumerate() {
+            let py = (y as usize + row) % DISPLAY_HEIGHT;
+            for bit in 0..8u8 {
+                let px = (x as usize + bit as usize) % DISPLAY_WIDTH;
+                collision |= self.update_pixel(px, py, bit, data);
+            }
+        }
+        let _ = self
+            .sender
+            .try_send(DisplayMessage::Update(self.pixels.clone()));
+
+        collision
+    }
+
+    fn update_pixel(&mut self, x: usize, y: usize, bit: u8, data: u8) -> bool {
+        let i = DISPLAY_WIDTH * y + x;
+        if let Some(mut pixel) = self.pixels.get_mut(i) {
+            let prev = *pixel;
+            let sprite = bit_at(data, 7u8 - bit);
+            let new = prev ^ sprite;
+            *pixel = new;
+
+            // collision flag set to true if a pixel has been switched
+            // from 1 to 0 during the draw operation
+            prev && !new
+        } else {
+            false
+        }
     }
 }
 

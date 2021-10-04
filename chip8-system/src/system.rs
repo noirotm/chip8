@@ -38,6 +38,7 @@ bitflags! {
     pub struct Quirks: u8 {
         const LOAD_STORE_IGNORES_I = 0x1;
         const SHIFT_READS_VX = 0x2;
+        const DRAW_WRAPS_PIXELS = 0x4;
     }
 }
 
@@ -181,9 +182,9 @@ impl System {
 
     fn execute_next_inst(&mut self, rng: &mut impl Rng) -> Result<(), SystemError> {
         // health check: PC must be even, otherwise we exit
-        if self.cpu.pc % 2 != 0 {
+        /*if self.cpu.pc % 2 != 0 {
             return Err(SystemError::OddPcAddress);
-        }
+        }*/
 
         let instr = self
             .memory
@@ -302,8 +303,14 @@ impl System {
                     .memory
                     .read_slice(self.cpu.i, n)
                     .ok_or(SystemError::MemoryReadOverflow)?;
-                self.display
-                    .draw_sprite((self.cpu.v[x], self.cpu.v[y]), bytes);
+
+                if self.options.quirks.contains(Quirks::DRAW_WRAPS_PIXELS) {
+                    self.display
+                        .draw_sprite_wrapped((self.cpu.v[x], self.cpu.v[y]), bytes);
+                } else {
+                    self.display
+                        .draw_sprite_clipped((self.cpu.v[x], self.cpu.v[y]), bytes);
+                }
             }
             Instr::SkipKeyPressed(x) => {
                 if let Some(k) = Key::from(self.cpu.v[x]) {
