@@ -304,13 +304,13 @@ impl System {
                     .read_slice(self.cpu.i, n)
                     .ok_or(SystemError::MemoryReadOverflow)?;
 
-                if self.options.quirks.contains(Quirks::DRAW_WRAPS_PIXELS) {
+                self.cpu.v[VReg::VF] = if self.options.quirks.contains(Quirks::DRAW_WRAPS_PIXELS) {
                     self.display
-                        .draw_sprite_wrapped((self.cpu.v[x], self.cpu.v[y]), bytes);
+                        .draw_sprite_wrapped((self.cpu.v[x], self.cpu.v[y]), bytes)
                 } else {
                     self.display
-                        .draw_sprite_clipped((self.cpu.v[x], self.cpu.v[y]), bytes);
-                }
+                        .draw_sprite_clipped((self.cpu.v[x], self.cpu.v[y]), bytes)
+                } as u8;
             }
             Instr::SkipKeyPressed(x) => {
                 if let Some(k) = Key::from(self.cpu.v[x]) {
