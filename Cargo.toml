@@ -28,7 +28,7 @@ members = [
 
 [dependencies]
 chip8-system = { path = "chip8-system" }
-clap = "3.0.0-beta.2"
+clap = { version = "4", features = ["derive"] }
 gui-druid = { path = "gui-druid" }
 nom = "7.0.0"
 sound-cpal = { path = "sound-cpal" }

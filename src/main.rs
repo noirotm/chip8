@@ -1,6 +1,6 @@
 use chip8_system::port::connect;
 use chip8_system::system::{Quirks, System, SystemOptions};
-use clap::Clap;
+use clap::Parser;
 use gui_druid::keyboard_map::load_profiles;
 use gui_druid::{Color, ColorParseError, Terminal, TerminalOptions};
 use sound_cpal::Beeper;
@@ -8,18 +8,18 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::thread;
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct Options {
     /// Set CPU frequency (> 0 and < 5000 Hz)
     #[clap(long, short)]
     cpu_frequency: Option<f64>,
 
     /// Set background color for the gui (hex HTML-like RGB color value)
-    #[clap(long, short, parse(try_from_str = parse_color))]
+    #[clap(long, short, value_parser = parse_color)]
     bg_color: Option<Color>,
 
     /// Set foreground color for the gui (hex HTML-like RGB color value)
-    #[clap(long, short, parse(try_from_str = parse_color))]
+    #[clap(long, short, value_parser = parse_color)]
     fg_color: Option<Color>,
 
     /// Set profile mapping physical to virtual keyboard (supported profiles: default, qwerty, azerty)
