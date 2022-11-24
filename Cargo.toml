@@ -1,34 +1,8 @@
-[package]
-name = "chip8"
-version = "0.1.0"
-authors = ["Marc Noirot <marc.noirot@gmail.com>"]
-description = """chip8 emulator"""
-documentation = "https://github.com/noirotm/chip8"
-homepage = "https://github.com/noirotm/chip8"
-repository = "https://github.com/noirotm/chip8"
-keywords = ["emulator", "vm", "chip-8"]
-categories = ["command-line-utilities", "emulation"]
-license = "MIT"
-edition = "2021"
-
-[[bin]]
-path = "src/main.rs"
-name = "chip8"
-
-[[bin]]
-path = "c8asm/src/main.rs"
-name = "c8asm"
-
 [workspace]
 members = [
+    "c8asm",
+    "chip8",
     "chip8-system",
     "gui-druid",
     "sound-cpal"
 ]
-
-[dependencies]
-chip8-system = { path = "chip8-system" }
-clap = { version = "4", features = ["derive"] }
-gui-druid = { path = "gui-druid" }
-nom = "7.0.0"
-sound-cpal = { path = "sound-cpal" }

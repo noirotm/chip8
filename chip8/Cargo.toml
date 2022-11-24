@@ -1,0 +1,18 @@
+[package]
+name = "chip8"
+version = "0.1.0"
+authors = ["Marc Noirot <marc.noirot@gmail.com>"]
+description = """chip8 emulator"""
+documentation = "https://github.com/noirotm/chip8"
+homepage = "https://github.com/noirotm/chip8"
+repository = "https://github.com/noirotm/chip8"
+keywords = ["emulator", "vm", "chip-8"]
+categories = ["command-line-utilities", "emulation"]
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+chip8-system = { path = "../chip8-system" }
+clap = { version = "4", features = ["derive"] }
+gui-druid = { path = "../gui-druid" }
+sound-cpal = { path = "../sound-cpal" }
