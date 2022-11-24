@@ -9,8 +9,7 @@ use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple
 use nom::{AsChar, IResult};
 use nom::{Finish, InputTakeAtPosition};
 use std::error::Error;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -336,11 +335,7 @@ fn parse_lines(i: &str) -> Result<Vec<Line>, String> {
 }
 
 pub fn parse_file<P: AsRef<Path>>(p: P) -> Result<Vec<Line>, Box<dyn Error>> {
-    let f = File::open(p)?;
-    let mut r = BufReader::new(f);
-    let mut s = String::new();
-    r.read_to_string(&mut s)?;
-
+    let s = fs::read_to_string(p)?;
     parse_lines(&s).map_err(|e| e.into())
 }
 

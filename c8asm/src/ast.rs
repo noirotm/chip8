@@ -6,10 +6,7 @@ pub struct Line {
 
 impl Line {
     pub fn size(&self) -> usize {
-        match &self.instr {
-            Some(i) => i.size(),
-            None => 0,
-        }
+        self.instr.as_ref().map(|i| i.size()).unwrap_or_default()
     }
 }
 
