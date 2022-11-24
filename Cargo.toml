@@ -9,7 +9,7 @@ repository = "https://github.com/noirotm/chip8"
 keywords = ["emulator", "vm", "chip-8"]
 categories = ["command-line-utilities", "emulation"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 path = "src/main.rs"
