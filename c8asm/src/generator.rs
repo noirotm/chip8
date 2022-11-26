@@ -89,7 +89,7 @@ fn opcode<W: Write>(
     w.write_all(&code.to_be_bytes()).map_err(|e| e.into())
 }
 
-fn addr<'a>(c: u16, addr: &Addr, labels: &HashMap<String, usize>) -> Result<u16, String> {
+fn addr(c: u16, addr: &Addr, labels: &HashMap<String, usize>) -> Result<u16, String> {
     let a = match addr {
         Addr::Imm(a) => *a as usize,
         Addr::LabelRef(s) => *labels.get(s).ok_or(format!("unknown label: '{}'", s))?,

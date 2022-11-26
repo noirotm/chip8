@@ -6,13 +6,13 @@ use parking_lot::{Condvar, Mutex};
 use std::sync::{Arc, RwLock};
 use std::thread;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum KeyState {
     Up,
     Down,
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq)]
+#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq, Eq)]
 pub enum Key {
     Key0 = 0x0,
     Key1 = 0x1,
