@@ -35,8 +35,8 @@ impl Default for KeyboardMap {
 }
 
 impl KeyboardMap {
-    pub fn from_bytes(b: &[u8]) -> Result<Self, toml::de::Error> {
-        toml::from_slice(b)
+    pub fn from_toml(s: &str) -> Result<Self, toml::de::Error> {
+        toml::from_str(s)
     }
 
     pub fn key(&self, s: &str) -> Option<Key> {
@@ -48,17 +48,17 @@ pub fn load_profiles() -> HashMap<String, KeyboardMap> {
     let mut profiles = HashMap::new();
     profiles.insert(
         "default".to_string(),
-        KeyboardMap::from_bytes(include_bytes!("../keyboard-profiles/default.toml"))
+        KeyboardMap::from_toml(include_str!("../keyboard-profiles/default.toml"))
             .expect("Unable to load profile"),
     );
     profiles.insert(
         "qwerty".to_string(),
-        KeyboardMap::from_bytes(include_bytes!("../keyboard-profiles/qwerty.toml"))
+        KeyboardMap::from_toml(include_str!("../keyboard-profiles/qwerty.toml"))
             .expect("Unable to load profile"),
     );
     profiles.insert(
         "azerty".to_string(),
-        KeyboardMap::from_bytes(include_bytes!("../keyboard-profiles/azerty.toml"))
+        KeyboardMap::from_toml(include_str!("../keyboard-profiles/azerty.toml"))
             .expect("Unable to load profile"),
     );
 
@@ -70,9 +70,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_bytes() {
-        let b = b"[keys]\n0 = 0x0\n1 = 0x1\n";
-        let m = KeyboardMap::from_bytes(b).unwrap();
+    fn test_from_toml() {
+        let b = "[keys]\n0 = 0x0\n1 = 0x1\n";
+        let m = KeyboardMap::from_toml(b).unwrap();
 
         assert!(matches!(m.key("0"), Some(Key::Key0)));
         assert!(matches!(m.key("1"), Some(Key::Key1)));

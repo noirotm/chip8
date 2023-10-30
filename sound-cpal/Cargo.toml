@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 chip8-system = { path = "../chip8-system" }
-cpal = "0.13.3"
-crossbeam-channel = "0.5.1"
+cpal = "0.15.2"
+crossbeam-channel = "0.5.8"

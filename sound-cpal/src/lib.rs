@@ -1,7 +1,7 @@
 use chip8_system::port::InputPort;
 use chip8_system::timer::TimerMessage;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{BuildStreamError, Stream};
+use cpal::{BackendSpecificError, BuildStreamError, FromSample, Sample, SizedSample, Stream};
 use crossbeam_channel::Sender;
 use std::error::Error;
 use std::thread;
@@ -39,6 +39,11 @@ impl Beeper {
                 cpal::SampleFormat::F32 => Self::create_stream::<f32>(&device, &config.into()),
                 cpal::SampleFormat::I16 => Self::create_stream::<i16>(&device, &config.into()),
                 cpal::SampleFormat::U16 => Self::create_stream::<u16>(&device, &config.into()),
+                sample_format => Err(BuildStreamError::BackendSpecific {
+                    err: BackendSpecificError {
+                        description: format!("Unsupported sample format '{sample_format}'"),
+                    },
+                }),
             };
 
             match stream {
@@ -89,7 +94,7 @@ impl Beeper {
         config: &cpal::StreamConfig,
     ) -> Result<Stream, BuildStreamError>
     where
-        T: cpal::Sample,
+        T: SizedSample + FromSample<f32>,
     {
         let sample_rate = config.sample_rate.0 as f32;
         let channels = config.channels as usize;
@@ -109,15 +114,16 @@ impl Beeper {
                 Self::write_data(data, channels, &mut next_value)
             },
             err_fn,
+            None,
         )
     }
 
     fn write_data<T>(output: &mut [T], channels: usize, next_sample: &mut dyn FnMut() -> f32)
     where
-        T: cpal::Sample,
+        T: Copy + FromSample<f32>,
     {
         for frame in output.chunks_mut(channels) {
-            let value: T = cpal::Sample::from::<f32>(&next_sample());
+            let value = next_sample().to_sample::<T>();
             for sample in frame.iter_mut() {
                 *sample = value;
             }

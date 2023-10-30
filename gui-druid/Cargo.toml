@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 chip8-system = { path = "../chip8-system" }
-crossbeam-channel = "0.5.1"
+crossbeam-channel = "0.5.8"
 druid = { git = "https://github.com/linebender/druid.git" }
-serde = { version = "1.0", features = ["derive"] }
-toml = "0.5.8"
+serde = { version = "1.0.190", features = ["derive"] }
+toml = "0.8.4"
