@@ -129,16 +129,22 @@ pub struct System {
     options: SystemOptions,
 }
 
-impl System {
-    pub fn new() -> Result<Self, Box<dyn Error>> {
+impl Default for System {
+    fn default() -> Self {
         Self::new_with_options(Default::default())
     }
+}
 
-    pub fn new_with_options(options: SystemOptions) -> Result<Self, Box<dyn Error>> {
+impl System {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn new_with_options(options: SystemOptions) -> Self {
         let mut memory = Memory::new();
         memory.write_slice(FONT_SPRITES_ADDRESS, font_sprites());
 
-        Ok(Self {
+        Self {
             // user programs start at 0x200
             cpu: Cpu {
                 pc: RESERVED_SIZE as u16,
@@ -152,7 +158,7 @@ impl System {
             display: Default::default(),
             memory,
             options,
-        })
+        }
     }
 
     pub fn load_image<P: AsRef<Path>>(&mut self, p: P) -> io::Result<()> {

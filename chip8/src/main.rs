@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         sys_opts.quirk(Quirks::DRAW_WRAPS_PIXELS);
     }
 
-    let mut system = System::new_with_options(sys_opts)?;
+    let mut system = System::new_with_options(sys_opts);
     let beeper = Beeper::new()?;
     connect(&system.sound_timer, &beeper);
 
