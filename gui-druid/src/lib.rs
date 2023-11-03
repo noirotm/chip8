@@ -2,6 +2,7 @@ use chip8_system::display::{
     pixel_buffer, DisplayMessage, PixelBuffer, DISPLAY_HEIGHT, DISPLAY_WIDTH,
 };
 use chip8_system::keyboard::{Key, KeyboardMessage};
+use chip8_system::keyboard_map::KeyboardMap;
 use chip8_system::port::{InputPort, OutputPort};
 use crossbeam_channel::{Receiver, Sender};
 use druid::widget::Align;
@@ -9,10 +10,7 @@ use druid::*;
 use std::thread;
 
 // expose Color to the outside
-use crate::keyboard_map::KeyboardMap;
 pub use druid::piet::{Color, ColorParseError};
-
-pub mod keyboard_map;
 
 const SCALING_FACTOR: f64 = 8.0;
 

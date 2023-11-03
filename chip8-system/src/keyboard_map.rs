@@ -1,4 +1,4 @@
-use chip8_system::keyboard::Key;
+use crate::keyboard::Key;
 use serde::Deserialize;
 use std::collections::HashMap;
 

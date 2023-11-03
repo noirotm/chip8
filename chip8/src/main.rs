@@ -1,7 +1,7 @@
+use chip8_system::keyboard_map::load_profiles;
 use chip8_system::port::connect;
 use chip8_system::system::{Quirks, System, SystemOptions};
 use clap::Parser;
-use gui_druid::keyboard_map::load_profiles;
 use gui_druid::{Color, ColorParseError, Terminal, TerminalOptions};
 use sound_cpal::Beeper;
 use std::error::Error;
