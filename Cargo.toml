@@ -6,4 +6,7 @@ members = [
     "gui-druid",
     "sound-cpal"
 ]
+default-members = [
+    "chip8"
+]
 resolver = "2"
