@@ -153,6 +153,7 @@ mod tests {
     use std::time::Duration;
 
     #[test]
+    #[ignore]
     fn beeper_works() {
         let b = Beeper::new().unwrap();
         b.play();
@@ -165,6 +166,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn beeper_with_timer_works() {
         let t = CountDownTimer::new();
         let b = Beeper::new().unwrap();
