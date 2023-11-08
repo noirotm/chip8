@@ -1,9 +1,8 @@
 use crate::port::InputPort;
-use crossbeam_channel::Sender;
+use crossbeam_channel::{select, Receiver, Sender};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use parking_lot::{Condvar, Mutex};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -63,50 +62,85 @@ impl KeyboardMessage {
     }
 }
 
-pub struct KeyboardController {
-    key_states: Arc<RwLock<[KeyState; 16]>>,
-    wait_for_key: Arc<Mutex<bool>>,
-    wake_cond: Arc<(Mutex<Option<Key>>, Condvar)>,
-    sender: Sender<KeyboardMessage>,
+pub(crate) struct KeyboardController {
+    stop_waiter_sender: Sender<()>,
 }
 
-impl Default for KeyboardController {
+impl KeyboardController {
+    pub fn stop(&self) {
+        _ = self.stop_waiter_sender.send(());
+    }
+}
+
+pub struct Keyboard {
+    key_states: Arc<RwLock<[KeyState; 16]>>,
+    wait_for_key: Arc<Mutex<bool>>,
+    stop_sender: Sender<()>,
+    sender: Sender<KeyboardMessage>,
+    wait_receiver: Receiver<Key>,
+    stop_waiter_receiver: Receiver<()>,
+    stop_waiter_sender: Sender<()>,
+}
+
+impl Default for Keyboard {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl KeyboardController {
+impl Keyboard {
     pub(crate) fn new() -> Self {
-        let (s, r) = crossbeam_channel::bounded(128);
+        // channel for input keyboard messages
+        let (sender, receiver) = crossbeam_channel::bounded(128);
 
+        // list of current key states (up or down)
         let key_states = Arc::new(RwLock::new([KeyState::Up; 16]));
         let key_states_clone = Arc::clone(&key_states);
 
+        // are we currently in wait_for_key_press
         let wait_for_key = Arc::new(Mutex::new(false));
         let wait_for_key_clone = Arc::clone(&wait_for_key);
 
-        let wake_cond = Arc::new((Mutex::new(None), Condvar::new()));
-        let wake_cond_clone = Arc::clone(&wake_cond);
+        // channel for stopping the keyboard controller thread
+        let (stop_sender, stop_receiver) = crossbeam_channel::bounded(0);
+
+        // channel to send pressed key to the blocked wait_for_key_press function
+        let (wait_sender, wait_receiver) = crossbeam_channel::bounded(1);
+
+        // channel to interrupt the wait_for_key_press function
+        let (stop_waiter_sender, stop_waiter_receiver) = crossbeam_channel::bounded(1);
 
         thread::spawn(move || {
-            while let Ok(KeyboardMessage { state, key }) = r.recv() {
-                if let Ok(mut key_states) = key_states_clone.write() {
-                    // update key status
-                    let idx = key as usize;
-                    key_states[idx] = state;
+            loop {
+                select! {
+                    recv(stop_receiver) -> _ => {
+                        break;
+                    }
+                    recv(receiver) -> msg => {
+                        if let Ok(KeyboardMessage { state, key }) = msg {
+                            if let Ok(mut key_states) = key_states_clone.write() {
+                                // update key status
+                                let idx = key as usize;
+                                key_states[idx] = state;
 
-                    // if a key has been pressed and we are waiting for a key press
-                    if state == KeyState::Down {
-                        let mut waiting = wait_for_key_clone.lock();
-                        if *waiting {
-                            // notify our condition variable
-                            let &(ref key_lock, ref cv) = &*wake_cond_clone;
-                            *key_lock.lock() = Some(key);
-                            cv.notify_one();
+                                // if a key has been pressed and we are waiting for a key press
+                                if state == KeyState::Down {
+                                    let mut waiting = wait_for_key_clone.lock().unwrap();
+                                    if *waiting {
+                                        // notify our condition variable
+                                        //let (ref key_lock, ref cv) = &*wake_cond_clone;
+                                        //*key_lock.lock() = Some(key);
+                                        //cv.notify_one();
 
-                            // stop waiting
-                            *waiting = false;
+                                        _ = wait_sender.try_send(key);
+
+                                        // stop waiting
+                                        *waiting = false;
+                                    }
+                                }
+                            }
+                        } else {
+                            break;
                         }
                     }
                 }
@@ -116,8 +150,12 @@ impl KeyboardController {
         Self {
             key_states,
             wait_for_key,
-            wake_cond,
-            sender: s,
+            //wake_cond,
+            stop_sender,
+            sender,
+            wait_receiver,
+            stop_waiter_receiver,
+            stop_waiter_sender,
         }
     }
 
@@ -128,28 +166,37 @@ impl KeyboardController {
             .unwrap_or(false)
     }
 
-    pub(crate) fn wait_for_key_press(&self) -> Key {
+    pub(crate) fn wait_for_key_press(&self) -> Option<Key> {
         {
             // register wait
-            *self.wait_for_key.lock() = true;
+            *self.wait_for_key.lock().unwrap() = true;
         }
 
-        // wait!
-        let &(ref lock, ref cv) = &*self.wake_cond;
-        let mut key_pressed = lock.lock();
-        if key_pressed.is_none() {
-            cv.wait(&mut key_pressed);
+        // wait for either interruption, or a key press
+        select! {
+            recv(self.stop_waiter_receiver) -> _ => {
+                None
+            }
+            recv(self.wait_receiver) -> key => {
+                key.ok()
+            }
         }
-        let k = key_pressed.expect("key cannot be empty");
+    }
 
-        // reset key for the next wait
-        *key_pressed = None;
-
-        k
+    pub(crate) fn controller(&self) -> KeyboardController {
+        KeyboardController {
+            stop_waiter_sender: self.stop_waiter_sender.clone(),
+        }
     }
 }
 
-impl InputPort<KeyboardMessage> for KeyboardController {
+impl Drop for Keyboard {
+    fn drop(&mut self) {
+        _ = self.stop_sender.try_send(());
+    }
+}
+
+impl InputPort<KeyboardMessage> for Keyboard {
     fn input(&self) -> Sender<KeyboardMessage> {
         self.sender.clone()
     }
@@ -162,8 +209,8 @@ mod tests {
 
     #[test]
     fn test_is_key_down_works() {
-        let kc = KeyboardController::new();
-        let sender = kc.input();
+        let kb = Keyboard::new();
+        let sender = kb.input();
 
         sender
             .send(KeyboardMessage::new(KeyState::Down, Key::Key0))
@@ -171,8 +218,8 @@ mod tests {
 
         thread::sleep(Duration::from_millis(100));
 
-        assert!(kc.is_key_down(Key::Key0));
-        assert!(!kc.is_key_down(Key::Key1));
+        assert!(kb.is_key_down(Key::Key0));
+        assert!(!kb.is_key_down(Key::Key1));
 
         sender
             .send(KeyboardMessage::new(KeyState::Up, Key::Key0))
@@ -180,14 +227,14 @@ mod tests {
 
         thread::sleep(Duration::from_millis(100));
 
-        assert!(!kc.is_key_down(Key::Key0));
-        assert!(!kc.is_key_down(Key::Key1));
+        assert!(!kb.is_key_down(Key::Key0));
+        assert!(!kb.is_key_down(Key::Key1));
     }
 
     #[test]
     fn test_wait_for_key_press_works() {
-        let kc = KeyboardController::new();
-        let sender = kc.input();
+        let kb = Keyboard::new();
+        let sender = kb.input();
 
         thread::spawn(move || {
             thread::sleep(Duration::from_millis(500));
@@ -196,7 +243,7 @@ mod tests {
                 .unwrap();
         });
 
-        let k = kc.wait_for_key_press();
-        assert_eq!(k, Key::Key0);
+        let k = kb.wait_for_key_press();
+        assert_eq!(k.unwrap(), Key::Key0);
     }
 }

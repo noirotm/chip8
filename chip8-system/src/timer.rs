@@ -1,7 +1,7 @@
-use crate::port::OutputPort;
+use crate::port::{ControlPin, OutputPort};
 use crossbeam_channel::{Receiver, Sender};
 use spin_sleep::LoopHelper;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
@@ -15,7 +15,7 @@ pub enum TimerMessage {
 
 pub struct CountDownTimer {
     value: Arc<AtomicU8>,
-    stop: Arc<AtomicBool>,
+    stop: ControlPin,
     ticker: JoinHandle<()>,
     sender: Sender<TimerMessage>,
     receiver: Receiver<TimerMessage>,
@@ -37,8 +37,8 @@ impl CountDownTimer {
         let value = Arc::new(AtomicU8::new(0));
         let value_clone = Arc::clone(&value);
 
-        let stop = Arc::new(AtomicBool::new(false));
-        let stop_clone = Arc::clone(&stop);
+        let stop = ControlPin::default();
+        let stop_clone = stop.clone();
 
         let (s, r) = crossbeam_channel::bounded(1);
         let s_clone = s.clone();
@@ -64,7 +64,7 @@ impl CountDownTimer {
                     }
                     loop_helper.loop_sleep();
                 }
-                if stop_clone.load(Ordering::Relaxed) {
+                if stop_clone.is_raised() {
                     break;
                 }
             }
@@ -108,8 +108,9 @@ impl OutputPort<TimerMessage> for CountDownTimer {
 /// the timer to stop when the instance is dropped.
 impl Drop for CountDownTimer {
     fn drop(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
+        self.stop.raise();
         self.update(0);
+        self.ticker.thread().unpark();
     }
 }
 

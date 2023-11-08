@@ -1,4 +1,6 @@
 use crossbeam_channel::{Receiver, Sender, TrySendError};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
 
 pub trait InputPort<TInput> {
@@ -47,4 +49,23 @@ where
         output_sender: to.input(),
     }
     .start();
+}
+
+#[derive(Clone)]
+pub struct ControlPin(Arc<AtomicBool>);
+
+impl ControlPin {
+    pub fn raise(&self) {
+        self.0.store(true, Ordering::Relaxed);
+    }
+
+    pub fn is_raised(&self) -> bool {
+        self.0.load(Ordering::Relaxed)
+    }
+}
+
+impl Default for ControlPin {
+    fn default() -> Self {
+        Self(Arc::new(Default::default()))
+    }
 }

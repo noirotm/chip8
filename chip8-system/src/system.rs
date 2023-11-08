@@ -1,7 +1,8 @@
 use crate::display::{font_sprites, DisplayBuffer, FONT_SPRITES_ADDRESS};
-use crate::keyboard::{Key, KeyboardController};
+use crate::keyboard::{Key, Keyboard, KeyboardController};
 use crate::memory::{Memory, RESERVED_SIZE};
 use crate::opcode::{parse_opcode, Instr};
+use crate::port::ControlPin;
 use crate::timer::{CountDownTimer, ObservableTimer};
 use bitflags::bitflags;
 use num_derive::FromPrimitive;
@@ -14,6 +15,7 @@ use std::fs::File;
 use std::io::Read;
 use std::ops::{Index, IndexMut};
 use std::path::Path;
+use std::thread::JoinHandle;
 use std::{io, thread};
 
 #[derive(Debug)]
@@ -24,6 +26,7 @@ pub enum SystemError {
     StackUnderflow,
     StackOverflow,
     SelfJump,
+    Interrupted,
 }
 
 impl Display for SystemError {
@@ -119,12 +122,25 @@ impl SystemOptions {
     }
 }
 
+pub struct SystemController {
+    stop_pin: ControlPin,
+    kb_controller: KeyboardController,
+}
+
+impl SystemController {
+    pub fn stop(&self) {
+        self.stop_pin.raise();
+        self.kb_controller.stop();
+    }
+}
+
 pub struct System {
     cpu: Cpu,
     delay_timer: CountDownTimer,
     pub sound_timer: CountDownTimer,
-    pub keyboard: KeyboardController,
+    pub keyboard: Keyboard,
     pub display: DisplayBuffer,
+    stop: ControlPin,
     memory: Memory,
     options: SystemOptions,
 }
@@ -158,6 +174,14 @@ impl System {
             display: Default::default(),
             memory,
             options,
+            stop: Default::default(),
+        }
+    }
+
+    pub fn controller(&self) -> SystemController {
+        SystemController {
+            stop_pin: self.stop.clone(),
+            kb_controller: self.keyboard.controller(),
         }
     }
 
@@ -168,10 +192,15 @@ impl System {
         Ok(())
     }
 
-    pub fn start(mut self) {
+    pub fn load_image_bytes(&mut self, bytes: &[u8]) {
+        let ram = &mut self.memory.as_bytes_mut()[RESERVED_SIZE..RESERVED_SIZE + bytes.len()];
+        ram.copy_from_slice(bytes);
+    }
+
+    pub fn start(mut self) -> JoinHandle<()> {
         thread::spawn(move || {
             let _ = self.run();
-        });
+        })
     }
 
     pub fn run(&mut self) -> Result<(), SystemError> {
@@ -179,11 +208,13 @@ impl System {
         let mut loop_helper =
             LoopHelper::builder().build_with_target_rate(self.options.cpu_frequency_hz);
 
-        loop {
+        while !self.stop.is_raised() {
             let _ = loop_helper.loop_start();
             self.execute_next_inst(&mut rng)?;
             loop_helper.loop_sleep();
         }
+
+        Ok(())
     }
 
     fn execute_next_inst(&mut self, rng: &mut impl Rng) -> Result<(), SystemError> {
@@ -336,7 +367,10 @@ impl System {
                 self.cpu.v[x] = self.delay_timer.value();
             }
             Instr::WaitKeyPress(x) => {
-                self.cpu.v[x] = self.keyboard.wait_for_key_press() as u8;
+                self.cpu.v[x] = self
+                    .keyboard
+                    .wait_for_key_press()
+                    .ok_or(SystemError::Interrupted)? as u8;
             }
             Instr::SetDelayTimer(x) => {
                 self.delay_timer.update(self.cpu.v[x]);
@@ -382,5 +416,48 @@ impl System {
         self.cpu.pc += 2;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread::sleep;
+    use std::time::Duration;
+
+    #[test]
+    fn stop_works() {
+        let mut chip8 = System::new();
+        let ctrl = chip8.controller();
+
+        let image = [0x00, 0xE0, 0x12, 0x00];
+        chip8.load_image_bytes(&image);
+
+        let j = chip8.start();
+
+        sleep(Duration::from_millis(200));
+        ctrl.stop();
+
+        let r = j.join();
+
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    fn stop_when_waiting_for_key_press_works() {
+        let mut chip8 = System::new();
+        let ctrl = chip8.controller();
+
+        let image = [0xF1, 0x0A];
+        chip8.load_image_bytes(&image);
+
+        let j = chip8.start();
+
+        sleep(Duration::from_millis(200));
+        ctrl.stop();
+
+        let r = j.join();
+
+        assert!(r.is_ok());
     }
 }
