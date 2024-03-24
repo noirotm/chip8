@@ -209,7 +209,11 @@ impl System {
 
         while !self.stop.is_raised() {
             let _ = loop_helper.loop_start();
-            self.execute_next_inst(&mut rng)?;
+            match self.execute_next_inst(&mut rng) {
+                Err(SystemError::Interrupted) => return Ok(()),
+                Err(e) => return Err(e),
+                _ => {}
+            }
             loop_helper.loop_sleep();
         }
 
