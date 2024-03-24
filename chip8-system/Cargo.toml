@@ -9,9 +9,10 @@ bitvec = "1.0.1"
 crossbeam-channel = "0.5.1"
 num-traits = "0.2.14"
 num-derive = "0.4.1"
-rand = { version = "0.8.5", features = [ "small_rng" ] }
+rand = { version = "0.8.5", features = ["small_rng"] }
 serde = { version = "1.0.190", features = ["derive"] }
 spin_sleep = "1.1.0"
+thiserror = "1.0.58"
 toml = "0.8.4"
 
 [dev-dependencies]

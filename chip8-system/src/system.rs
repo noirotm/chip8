@@ -9,33 +9,32 @@ use num_derive::FromPrimitive;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use spin_sleep::LoopHelper;
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::Read;
 use std::ops::{Index, IndexMut};
 use std::path::Path;
 use std::thread::JoinHandle;
 use std::{io, thread};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum SystemError {
+    #[error("odd PC address")]
     OddPcAddress,
-    UnknownInstruction,
+    #[error("unknown instruction {0:#06x}")]
+    UnknownInstruction(u16),
+    #[error("memory read overflow")]
     MemoryReadOverflow,
+    #[error("stack underflow")]
     StackUnderflow,
+    #[error("stack overflow")]
     StackOverflow,
+    #[error("jump at current address")]
     SelfJump,
+    #[error("interrupted")]
     Interrupted,
 }
-
-impl Display for SystemError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Error for SystemError {}
 
 bitflags! {
     pub struct Quirks: u8 {
@@ -227,7 +226,7 @@ impl System {
             .memory
             .read_u16(self.cpu.pc)
             .ok_or(SystemError::MemoryReadOverflow)?;
-        let opcode = parse_opcode(instr).ok_or(SystemError::UnknownInstruction)?;
+        let opcode = parse_opcode(instr).ok_or(SystemError::UnknownInstruction(instr))?;
 
         // println!("0x{:04x}: {:04X} {:?}", self.cpu.pc, instr, &opcode);
 
